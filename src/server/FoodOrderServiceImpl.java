@@ -3,6 +3,8 @@ package server;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.rmi.RemoteException;
 
 public class FoodOrderServiceImpl extends UnicastRemoteObject implements FoodOrderService {
@@ -24,8 +26,12 @@ public class FoodOrderServiceImpl extends UnicastRemoteObject implements FoodOrd
     public void registerCustomer(String name, String email, int ICNumber) throws RemoteException {
         try {
             Connection conn = connect();
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'registerCustomer'");
+            String sql = "INSERT INTO customers (name, contact) VALUES (?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, name);
+            pstmt.setString(2, email);
+            pstmt.setInt(3, ICNumber);
+            pstmt.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -33,13 +39,34 @@ public class FoodOrderServiceImpl extends UnicastRemoteObject implements FoodOrd
 
     @Override
     public void placeOrder(String customerId, String foodItem) throws RemoteException {
-        // Code to place order in the database
+        try (Connection conn = connect()) {
+            String sql = "INSERT INTO orders (customer_id, food_item) VALUES (?, ?)";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, Integer.parseInt(customerId));
+            pstmt.setString(2, foodItem);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public double calculateBill(String customerId) throws RemoteException {
-        // Code to calculate bill from orders in the database
-        return 0.0; // Placeholder
+        double total = 0.0;
+        try (Connection conn = connect()) {
+            String sql = "SELECT COUNT(*) AS item_count FROM orders WHERE customer_id = ?";
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, Integer.parseInt(customerId));
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                int itemCount = rs.getInt("item_count");
+                total = itemCount * 10; // Assuming each item costs $10
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return total;
     }
 
 }
